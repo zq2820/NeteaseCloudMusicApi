@@ -42,9 +42,10 @@ const chooseUserAgent = (ua = false) => {
     ? realUserAgentList[Math.floor(Math.random() * realUserAgentList.length)]
     : ua
 }
-const createRequest = (method, url, data, options) => {
+const createRequest = (method, url, data, options, header, responseType) => {
   return new Promise((resolve, reject) => {
-    let headers = { 'User-Agent': chooseUserAgent(options.ua) }
+    let headers = header || {}
+    headers['User-Agent'] = chooseUserAgent(options.ua)
     if (method.toUpperCase() === 'POST')
       headers['Content-Type'] = 'application/x-www-form-urlencoded'
     if (url.includes('music.163.com'))
@@ -118,6 +119,7 @@ const createRequest = (method, url, data, options) => {
       data: queryString.stringify(data),
       httpAgent: new http.Agent({ keepAlive: true }),
       httpsAgent: new https.Agent({ keepAlive: true }),
+      responseType: responseType || 'json',
     }
 
     if (options.crypto === 'eapi') settings.encoding = null
@@ -154,11 +156,12 @@ const createRequest = (method, url, data, options) => {
           answer.body = body
           answer.status = answer.body.code || res.status
           if (
-            [201, 302, 400, 502, 800, 801, 802, 803].indexOf(answer.body.code) >
-            -1
+            [201, 302, 400, 502, 800, 801, 802, 803, 206].indexOf(
+              answer.status,
+            ) > -1
           ) {
             // 特殊状态码
-            answer.status = 200
+            // answer.status = 200
           }
         } catch (e) {
           answer.body = body
@@ -167,7 +170,7 @@ const createRequest = (method, url, data, options) => {
 
         answer.status =
           100 < answer.status && answer.status < 600 ? answer.status : 400
-        if (answer.status == 200) resolve(answer)
+        if (answer.status == 200 || answer.status === 206) resolve(answer)
         else reject(answer)
       })
       .catch((err) => {
